@@ -1,0 +1,10 @@
+package api
+
+import "net/http"
+
+func NewRouter(handler *Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", handler.Health)
+	mux.HandleFunc("/anime/search", handler.SearchAnime)
+	return mux
+}
