@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS recommendations (
     score DOUBLE PRECISION NOT NULL,
     rank INTEGER NOT NULL,
     reason TEXT,
+    model_version TEXT NOT NULL DEFAULT 'v1',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (source_anime_id, recommended_anime_id),
@@ -20,3 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_recommendations_source_rank
 
 CREATE INDEX IF NOT EXISTS idx_recommendations_source_score
     ON recommendations(source_anime_id, score DESC);
+
+CREATE INDEX IF NOT EXISTS idx_recommendations_model_version
+    ON recommendations(model_version);
