@@ -2,62 +2,80 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"errors"
-	"log"
+	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/SilverXer0/Kitsu/backend/internal/cache"
+	"github.com/SilverXer0/Kitsu/backend/internal/metrics"
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
+	"github.com/redis/go-redis/v9"
 )
 
 type Handler struct {
-	store *storage.AnimeStore
-	cache *cache.RedisCache
-
+	store   *storage.AnimeStore
+	cache   *cache.RedisCache
+	metrics *metrics.Metrics
 }
 
-func NewHandler(store *storage.AnimeStore, cacheClient *cache.RedisCache) *Handler {
+func NewHandler(
+	store *storage.AnimeStore,
+	cacheClient *cache.RedisCache,
+	metricsCollector *metrics.Metrics,
+) *Handler {
 	return &Handler{
-		store: store,
-		cache: cacheClient,
+		store:   store,
+		cache:   cacheClient,
+		metrics: metricsCollector,
 	}
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string {
+	writeJSON(w, http.StatusOK, map[string]string{
 		"status": "ok",
 	})
+}
+
+func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": "ready",
+	})
+}
+
+func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, h.metrics.Snapshot())
 }
 
 func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
 			"error": "missing query parameter q",
 		})
 		return
 	}
 
-	res, err := h.store.SearchAnimeByTitle(r.Context(), q, 10)
+	result, err := h.store.SearchAnimeByTitle(r.Context(), q, 10)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "failed to search anime",
 		})
 		return
 	}
-	writeJSON(w, http.StatusOK, res)
-}
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	h.metrics.RecordAnimeDetailRequest()
+	defer func() {
+		h.metrics.RecordRequest(time.Since(start))
+	}()
+
 	id, ok := extractAnimeID(r.URL.Path)
 	if !ok {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
@@ -70,6 +88,7 @@ func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
 
 	cached, err := h.cache.Get(r.Context(), cacheKey)
 	if err == nil {
+		h.metrics.RecordCacheHit()
 		log.Printf("cache hit: anime detail id=%d", id)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -80,8 +99,11 @@ func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
 	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Printf("cache error: anime detail id=%d err=%v", id, err)
 	} else {
+		h.metrics.RecordCacheMiss()
 		log.Printf("cache miss: anime detail id=%d", id)
 	}
+
+	log.Printf("db fallback: anime detail id=%d", id)
 
 	anime, err := h.store.GetAnimeByID(r.Context(), id)
 	if err != nil {
@@ -100,13 +122,23 @@ func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := json.Marshal(anime)
 	if err == nil {
-		_ = h.cache.Set(r.Context(), cacheKey, string(payload))
+		if err := h.cache.Set(r.Context(), cacheKey, string(payload)); err != nil {
+			log.Printf("cache set error: anime detail id=%d err=%v", id, err)
+		} else {
+			log.Printf("cache set: anime detail id=%d", id)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, anime)
 }
 
 func (h *Handler) GetRecommendationsByAnimeID(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	h.metrics.RecordRecommendationRequest()
+	defer func() {
+		h.metrics.RecordRequest(time.Since(start))
+	}()
+
 	id, ok := extractAnimeIDFromRecommendationsPath(r.URL.Path)
 	if !ok {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
@@ -119,6 +151,7 @@ func (h *Handler) GetRecommendationsByAnimeID(w http.ResponseWriter, r *http.Req
 
 	cached, err := h.cache.Get(r.Context(), cacheKey)
 	if err == nil {
+		h.metrics.RecordCacheHit()
 		log.Printf("cache hit: anime recommendations id=%d", id)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -129,8 +162,11 @@ func (h *Handler) GetRecommendationsByAnimeID(w http.ResponseWriter, r *http.Req
 	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Printf("cache error: anime recommendations id=%d err=%v", id, err)
 	} else {
+		h.metrics.RecordCacheMiss()
 		log.Printf("cache miss: anime recommendations id=%d", id)
 	}
+
+	log.Printf("db fallback: anime recommendations id=%d", id)
 
 	recommendations, err := h.store.GetRecommendationsByAnimeID(r.Context(), id, 10)
 	if err != nil {
@@ -142,7 +178,11 @@ func (h *Handler) GetRecommendationsByAnimeID(w http.ResponseWriter, r *http.Req
 
 	payload, err := json.Marshal(recommendations)
 	if err == nil {
-		_ = h.cache.Set(r.Context(), cacheKey, string(payload))
+		if err := h.cache.Set(r.Context(), cacheKey, string(payload)); err != nil {
+			log.Printf("cache set error: anime recommendations id=%d err=%v", id, err)
+		} else {
+			log.Printf("cache set: anime recommendations id=%d", id)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, recommendations)
@@ -174,4 +214,10 @@ func extractAnimeIDFromRecommendationsPath(path string) (int64, bool) {
 	}
 
 	return id, true
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

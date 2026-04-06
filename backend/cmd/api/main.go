@@ -9,6 +9,7 @@ import (
 	"github.com/SilverXer0/Kitsu/backend/internal/cache"
 	"github.com/SilverXer0/Kitsu/backend/internal/config"
 	"github.com/SilverXer0/Kitsu/backend/internal/db"
+	"github.com/SilverXer0/Kitsu/backend/internal/metrics"
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
 )
 
@@ -33,8 +34,12 @@ func main() {
 		log.Fatalf("failed to connect to redis: %v", err)
 	}
 
+	log.Printf("redis cache connected addr=%s ttl_seconds=%d", cfg.RedisAddr, cfg.CacheTTLSeconds)
+
 	store := storage.NewAnimeStore(postgresDB)
-	handler := api.NewHandler(store, cacheClient)
+	metricsCollector := metrics.NewMetrics()
+
+	handler := api.NewHandler(store, cacheClient, metricsCollector)
 	router := api.NewRouter(handler)
 
 	addr := ":" + cfg.AppPort
