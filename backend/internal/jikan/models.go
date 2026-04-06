@@ -2,6 +2,13 @@ package jikan
 
 type AnimeListResponse struct {
 	Data []AnimeData `json:"data"`
+	Pagination Pagination `json:"pagination"`
+}
+
+type Pagination struct {
+	LastVisiblePage int  `json:"last_visible_page"`
+	HasNextPage     bool `json:"has_next_page"`
+	CurrentPage     int  `json:"current_page"`
 }
 
 type NamedResource struct {
