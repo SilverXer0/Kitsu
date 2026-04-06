@@ -1,5 +1,4 @@
 # Kitsu
-# Kitsu
 
 Kitsu is a production-style anime recommendation platform designed to simulate a real-world recommendation system. It focuses on system design, data pipelines, and scalable API serving rather than purely machine learning experimentation.
 
