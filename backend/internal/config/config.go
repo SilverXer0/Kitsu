@@ -17,6 +17,7 @@ type Config struct {
 	RedisPassword string
 	RedisDB int
 	CacheTTLSeconds int
+	IngestMode string
 }
 
 func Load() Config {
@@ -31,6 +32,7 @@ func Load() Config {
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 		RedisDB: getEnvInt("REDIS_DB", 0),
 		CacheTTLSeconds: getEnvInt("CACHE_TTL_SECONDS", 300),
+		IngestMode: getEnv("INGEST_MODE", "top"),
 	}
 	if cfg.PostgresDSN == "" {
 		log.Fatal("POSTGRES_DSN is required")

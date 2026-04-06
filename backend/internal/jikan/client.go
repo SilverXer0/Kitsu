@@ -28,21 +28,41 @@ func NewClient(baseURL string, limiter *ratelimit.DualLimiter) *Client {
 
 
 func (c *Client) GetTopAnime(ctx context.Context, page int) (*AnimeListResponse, error) {
+	return c.getAnimeList(ctx, fmt.Sprintf("/top/anime?page=%d", page))
+}
+
+func (c *Client) GetSeasonNow(ctx context.Context, page int) (*AnimeListResponse, error) {
+	return c.getAnimeList(ctx, fmt.Sprintf("/seasons/now?page=%d", page))
+}
+
+func (c *Client) GetUpcomingAnime(ctx context.Context, page int) (*AnimeListResponse, error) {
+	return c.getAnimeList(ctx, fmt.Sprintf("/seasons/upcoming?page=%d", page))
+}
+
+func (c *Client) getAnimeList(ctx context.Context, path string) (*AnimeListResponse, error) {
 	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
-	} 
-	url := fmt.Sprintf("%s/top/anime?page=%d", c.baseURL, page)
-	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var res AnimeListResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("jikan returned status %d", resp.StatusCode)
+	}
+
+	var result AnimeListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
 
-	return &res, nil
+	return &result, nil
 }
