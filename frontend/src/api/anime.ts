@@ -1,8 +1,14 @@
 import { apiFetch } from "./client";
-import type { Anime, Recommendation } from "../types/anime";
+import type { Anime, AnimeSearchResponse, Recommendation } from "../types/anime";
 
-export function searchAnime(query: string): Promise<Anime[]> {
-  return apiFetch<Anime[]>(`/anime/search?q=${encodeURIComponent(query)}`);
+export function searchAnime(
+  query: string,
+  page = 1,
+  limit = 12,
+): Promise<AnimeSearchResponse> {
+  return apiFetch<AnimeSearchResponse>(
+    `/anime/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+  );
 }
 
 export function getAnimeById(animeId: number): Promise<Anime> {

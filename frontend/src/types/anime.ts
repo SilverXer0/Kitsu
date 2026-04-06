@@ -19,3 +19,13 @@ export type Recommendation = {
   model_version: string;
   anime: Anime;
 };
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  limit: number;
+  total_items: number;
+  total_pages: number;
+};
+
+export type AnimeSearchResponse = PaginatedResponse<Anime>;

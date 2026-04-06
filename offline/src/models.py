@@ -22,6 +22,7 @@ class AnimeRecord(BaseModel):
     score: Optional[float] = None
     popularity: Optional[int] = None
     year: Optional[int] = None
+    synopsis: Optional[str] = None
     genres_json: list[GenreEntry] = Field(default_factory=list)
     studios_json: list[StudioEntry] = Field(default_factory=list)
 
@@ -29,11 +30,13 @@ class AnimeRecord(BaseModel):
 class AnimeFeatures(BaseModel):
     mal_id: int
     title: str
+    normalized_title: str
     score: Optional[float] = None
     popularity: Optional[int] = None
     year: Optional[int] = None
     genres: set[str] = Field(default_factory=set)
     studios: set[str] = Field(default_factory=set)
+    synopsis_tokens: set[str] = Field(default_factory=set)
 
 
 class RecommendationRecord(BaseModel):

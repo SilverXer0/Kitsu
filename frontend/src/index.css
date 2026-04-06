@@ -129,6 +129,15 @@ img {
   font-size: 1.15rem;
 }
 
+.results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  color: #b7c3d6;
+  font-size: 0.95rem;
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -244,6 +253,29 @@ img {
   color: #b7c3d6;
 }
 
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.pagination-controls button {
+  border: none;
+  background: #7aa2ff;
+  color: #08101d;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .empty-state {
   color: #a8b6cb;
   padding: 0.5rem 0;
@@ -287,5 +319,11 @@ img {
 
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .results-toolbar,
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

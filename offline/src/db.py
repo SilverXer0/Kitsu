@@ -30,6 +30,7 @@ def fetch_anime_records(conn) -> list[AnimeRecord]:
         SELECT
             mal_id,
             title,
+            synopsis,
             score,
             popularity,
             year,
@@ -47,6 +48,7 @@ def fetch_anime_records(conn) -> list[AnimeRecord]:
         record = AnimeRecord(
             mal_id=row["mal_id"],
             title=row["title"],
+            synopsis=row["synopsis"],
             score=row["score"],
             popularity=row["popularity"],
             year=row["year"],

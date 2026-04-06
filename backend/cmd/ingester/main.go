@@ -15,6 +15,11 @@ import (
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
 )
 
+type fetchMode struct {
+	Name  string
+	Pages int
+}
+
 func main() {
 	ctx := context.Background()
 	cfg := config.Load()
@@ -31,6 +36,8 @@ func main() {
 	limiter := ratelimit.NewDualLimiter()
 	client := jikan.NewClient(cfg.JikanBaseURL, limiter)
 
+	modes := buildFetchPlan(cfg)
+
 	log.Printf(
 		"starting ingest mode=%s pages=%d max_pages=%d",
 		cfg.IngestMode,
@@ -43,66 +50,62 @@ func main() {
 		log.Fatalf("failed to create sync run: %v", err)
 	}
 
-	pagesRequested := cfg.IngestPages
+	pagesRequested := totalRequestedPages(cfg, modes)
 	pagesSucceeded := 0
 	totalUpserted := 0
 
-	if cfg.IngestMode == "backfill" {
-		pagesRequested = cfg.IngestMaxPages
-	}
+	for _, mode := range modes {
+		log.Printf("processing sub-mode=%s pages=%d", mode.Name, mode.Pages)
 
-	for page := 1; shouldContinue(cfg, page); page++ {
-		log.Printf("fetching mode=%s page=%d", cfg.IngestMode, page)
+		for page := 1; shouldContinue(cfg, mode.Name, page, mode.Pages); page++ {
+			log.Printf("fetching mode=%s page=%d", mode.Name, page)
 
-		resp, err := fetchPageByMode(ctx, client, cfg.IngestMode, page)
-		if err != nil {
-			_ = syncRunStore.MarkSyncRunFailed(
-				ctx,
-				syncRunID,
-				pagesRequested,
-				pagesSucceeded,
-				totalUpserted,
-				err.Error(),
-			)
-			log.Fatalf("failed to fetch mode=%s page=%d: %v", cfg.IngestMode, page, err)
-		}
-
-		// In backfill mode, stop cleanly when the upstream returns no data.
-		if len(resp.Data) == 0 {
-			log.Printf("no data returned for mode=%s page=%d, stopping", cfg.IngestMode, page)
-			pagesRequested = page
-			break
-		}
-
-		pagesSucceeded++
-
-		pageCount := 0
-		for _, item := range resp.Data {
-			anime, err := normalizeAnime(item)
+			resp, err := fetchPageByMode(ctx, client, mode.Name, page)
 			if err != nil {
-				log.Printf("skipping anime %d due to normalization error: %v", item.MALID, err)
-				continue
+				_ = syncRunStore.MarkSyncRunFailed(
+					ctx,
+					syncRunID,
+					pagesRequested,
+					pagesSucceeded,
+					totalUpserted,
+					err.Error(),
+				)
+				log.Fatalf("failed to fetch mode=%s page=%d: %v", mode.Name, page, err)
 			}
 
-			if err := store.UpsertAnime(ctx, anime); err != nil {
-				log.Printf("failed to upsert anime %d (%s): %v", anime.MALID, anime.Title, err)
-				continue
+			if len(resp.Data) == 0 {
+				log.Printf("no data returned for mode=%s page=%d, stopping sub-mode", mode.Name, page)
+				break
 			}
 
-			pageCount++
-			totalUpserted++
+			pagesSucceeded++
+
+			pageCount := 0
+			for _, item := range resp.Data {
+				anime, err := normalizeAnime(item)
+				if err != nil {
+					log.Printf("skipping anime %d due to normalization error: %v", item.MALID, err)
+					continue
+				}
+
+				if err := store.UpsertAnime(ctx, anime); err != nil {
+					log.Printf("failed to upsert anime %d (%s): %v", anime.MALID, anime.Title, err)
+					continue
+				}
+
+				pageCount++
+				totalUpserted++
+			}
+
+			log.Printf("mode=%s page=%d upserted %d anime", mode.Name, page, pageCount)
+
+			if mode.Name == "backfill" && !resp.Pagination.HasNextPage {
+				log.Printf("reached final page for backfill at page=%d", page)
+				break
+			}
+
+			time.Sleep(500 * time.Millisecond)
 		}
-
-		log.Printf("page %d upserted %d anime", page, pageCount)
-
-		// For backfill mode, stop when Jikan says there is no next page.
-		if cfg.IngestMode == "backfill" && !resp.Pagination.HasNextPage {
-			pagesRequested = page
-			log.Printf("reached final page for backfill at page=%d", page)
-			break
-		}
-
-		time.Sleep(500 * time.Millisecond)
 	}
 
 	if err := syncRunStore.MarkSyncRunSucceeded(
@@ -124,12 +127,39 @@ func main() {
 	)
 }
 
-func shouldContinue(cfg config.Config, page int) bool {
+func buildFetchPlan(cfg config.Config) []fetchMode {
 	switch cfg.IngestMode {
+	case "refresh":
+		return []fetchMode{
+			{Name: "season_now", Pages: 3},
+			{Name: "upcoming", Pages: 3},
+			{Name: "top", Pages: 3},
+		}
+	case "backfill":
+		return []fetchMode{
+			{Name: "backfill", Pages: cfg.IngestMaxPages},
+		}
+	default:
+		return []fetchMode{
+			{Name: cfg.IngestMode, Pages: cfg.IngestPages},
+		}
+	}
+}
+
+func totalRequestedPages(cfg config.Config, modes []fetchMode) int {
+	total := 0
+	for _, mode := range modes {
+		total += mode.Pages
+	}
+	return total
+}
+
+func shouldContinue(cfg config.Config, mode string, page int, pageLimit int) bool {
+	switch mode {
 	case "backfill":
 		return page <= cfg.IngestMaxPages
 	default:
-		return page <= cfg.IngestPages
+		return page <= pageLimit
 	}
 }
 
@@ -170,16 +200,16 @@ func normalizeAnime(item jikan.AnimeData) (models.Anime, error) {
 	}
 
 	return models.Anime{
-		MALID: item.MALID,
-		Title: item.Title,
+		MALID:        item.MALID,
+		Title:        item.Title,
 		TitleEnglish: item.TitleEnglish,
-		Synopsis: item.Synopsis,
-		Score: item.Score,
-		Popularity: item.Popularity,
-		Episodes: item.Episodes,
-		Year: item.Year,
-		ImageURL: imageURL,
-		GenresJSON: genresJSON,
-		StudiosJSON: studiosJSON,
+		Synopsis:     item.Synopsis,
+		Score:        item.Score,
+		Popularity:   item.Popularity,
+		Episodes:     item.Episodes,
+		Year:         item.Year,
+		ImageURL:     imageURL,
+		GenresJSON:   genresJSON,
+		StudiosJSON:  studiosJSON,
 	}, nil
 }

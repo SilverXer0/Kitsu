@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./index.css";
 
 import { getAnimeById, getRecommendationsByAnimeId, searchAnime } from "./api/anime";
@@ -9,6 +9,8 @@ import SearchBar from "./components/SearchBar";
 import Section from "./components/Section";
 import type { Anime, Recommendation } from "./types/anime";
 
+const SEARCH_LIMIT = 12;
+
 export default function App() {
   const [results, setResults] = useState<Anime[]>([]);
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
@@ -17,18 +19,34 @@ export default function App() {
   const [isLoadingSelection, setIsLoadingSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSearch(query: string) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchPage, setSearchPage] = useState(1);
+  const [totalSearchPages, setTotalSearchPages] = useState(0);
+  const [totalSearchItems, setTotalSearchItems] = useState(0);
+
+  async function runSearch(query: string, page: number) {
     try {
       setError(null);
       setIsSearching(true);
-      const data = await searchAnime(query);
-      setResults(data);
+
+      const response = await searchAnime(query, page, SEARCH_LIMIT);
+
+      setResults(response.items);
+      setSearchPage(response.page);
+      setTotalSearchPages(response.total_pages);
+      setTotalSearchItems(response.total_items);
     } catch (err) {
       console.error(err);
       setError("Failed to search anime.");
     } finally {
       setIsSearching(false);
     }
+  }
+
+  async function handleSearch(query: string) {
+    setSearchQuery(query);
+    setSearchPage(1);
+    await runSearch(query, 1);
   }
 
   async function handleSelectAnime(anime: Anime) {
@@ -51,14 +69,29 @@ export default function App() {
     }
   }
 
+  async function handlePreviousPage() {
+    if (!searchQuery || searchPage <= 1) return;
+    await runSearch(searchQuery, searchPage - 1);
+  }
+
+  async function handleNextPage() {
+    if (!searchQuery || searchPage >= totalSearchPages) return;
+    await runSearch(searchQuery, searchPage + 1);
+  }
+
+  useEffect(() => {
+    // no-op; placeholder if you want future route/query syncing
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Anime Recommendation Engine</p>
-          <h1>Kitsu</h1>
+          <p className="eyebrow">Kitsu</p>
+          <h1>Anime recommendation infrastructure platform</h1>
           <p className="hero-copy">
-            Search Anime and Explore Recommendations
+            Search anime, inspect metadata, and explore offline-generated recommendations
+            served by the Go backend.
           </p>
         </div>
       </header>
@@ -75,11 +108,38 @@ export default function App() {
                 Search for an anime to begin exploring the catalog.
               </div>
             ) : (
-              <div className="card-grid">
-                {results.map((anime) => (
-                  <AnimeCard key={anime.mal_id} anime={anime} onSelect={handleSelectAnime} />
-                ))}
-              </div>
+              <>
+                <div className="results-toolbar">
+                  <span>
+                    Showing page {searchPage} of {totalSearchPages || 1}
+                  </span>
+                  <span>{totalSearchItems} total results</span>
+                </div>
+
+                <div className="card-grid">
+                  {results.map((anime) => (
+                    <AnimeCard key={anime.mal_id} anime={anime} onSelect={handleSelectAnime} />
+                  ))}
+                </div>
+
+                <div className="pagination-controls">
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={isSearching || searchPage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {searchPage} / {totalSearchPages || 1}
+                  </span>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={isSearching || searchPage >= totalSearchPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             )}
           </Section>
         </div>

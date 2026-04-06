@@ -11,6 +11,7 @@ import (
 
 	"github.com/SilverXer0/Kitsu/backend/internal/cache"
 	"github.com/SilverXer0/Kitsu/backend/internal/metrics"
+	"github.com/SilverXer0/Kitsu/backend/internal/models"
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
 	"github.com/redis/go-redis/v9"
 )
@@ -50,7 +51,7 @@ func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
 			"error": "missing query parameter q",
@@ -58,7 +59,14 @@ func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.store.SearchAnimeByTitle(r.Context(), q, 10)
+	page := parsePositiveIntOrDefault(r.URL.Query().Get("page"), 1)
+	limit := parsePositiveIntOrDefault(r.URL.Query().Get("limit"), 12)
+
+	if limit > 50 {
+		limit = 50
+	}
+
+	items, totalItems, err := h.store.SearchAnimeByTitlePaginated(r.Context(), q, page, limit)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "failed to search anime",
@@ -66,7 +74,20 @@ func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, result)
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	response := models.PaginatedResponse[models.Anime]{
+		Items:      items,
+		Page:       page,
+		Limit:      limit,
+		TotalItems: totalItems,
+		TotalPages: totalPages,
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +235,19 @@ func extractAnimeIDFromRecommendationsPath(path string) (int64, bool) {
 	}
 
 	return id, true
+}
+
+func parsePositiveIntOrDefault(value string, fallback int) int {
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+
+	return parsed
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
