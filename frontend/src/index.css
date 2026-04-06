@@ -1,0 +1,291 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #e8eef5;
+  background: #0b1220;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top, rgba(49, 91, 173, 0.25), transparent 35%),
+    #0b1220;
+  color: #e8eef5;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.hero {
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  color: #8fb6ff;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.05;
+}
+
+.hero-copy {
+  max-width: 740px;
+  margin-top: 1rem;
+  color: #b7c3d6;
+  font-size: 1.05rem;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.search-bar input {
+  flex: 1;
+  border: 1px solid #24324a;
+  background: #111a2b;
+  color: #edf4ff;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+}
+
+.search-bar button {
+  border: none;
+  background: #7aa2ff;
+  color: #08101d;
+  padding: 0.95rem 1.25rem;
+  border-radius: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.search-bar button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.section {
+  background: rgba(17, 26, 43, 0.85);
+  border: 1px solid #1d2940;
+  border-radius: 20px;
+  padding: 1.25rem;
+  backdrop-filter: blur(6px);
+}
+
+.section-header {
+  margin-bottom: 1rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.anime-card {
+  border: 1px solid #24324a;
+  background: #0f1727;
+  border-radius: 18px;
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.anime-card-clickable {
+  cursor: pointer;
+}
+
+.anime-card-clickable:hover {
+  transform: translateY(-2px);
+  border-color: #47628f;
+}
+
+.anime-card-image-wrapper {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #0b1220;
+}
+
+.anime-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.anime-card-placeholder {
+  display: grid;
+  place-items: center;
+  color: #9aa9be;
+}
+
+.anime-card-body {
+  padding: 1rem;
+}
+
+.anime-card-body h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.anime-card-meta {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.75rem;
+  color: #b7c3d6;
+  font-size: 0.92rem;
+}
+
+.muted {
+  color: #a8b6cb;
+}
+
+.anime-detail {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1.2rem;
+}
+
+.anime-detail-image-wrapper {
+  width: 100%;
+  max-width: 220px;
+}
+
+.anime-detail-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid #24324a;
+}
+
+.anime-detail-content h2 {
+  margin-top: 0;
+  margin-bottom: 0.6rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+
+.synopsis {
+  color: #d8e2f1;
+  white-space: pre-line;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.recommendation-item {
+  border: 1px solid #24324a;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f1727;
+}
+
+.recommendation-meta {
+  padding: 0 1rem 1rem;
+  color: #b7c3d6;
+}
+
+.empty-state {
+  color: #a8b6cb;
+  padding: 0.5rem 0;
+}
+
+.error-banner {
+  margin-bottom: 1rem;
+  border: 1px solid #5c2b2b;
+  background: rgba(120, 32, 32, 0.22);
+  color: #ffd2d2;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+}
+
+@media (max-width: 1024px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .anime-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .anime-detail-image-wrapper {
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 1rem;
+  }
+
+  .search-bar {
+    flex-direction: column;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

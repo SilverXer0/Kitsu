@@ -16,7 +16,7 @@ func NewRouter(handler *Handler) http.Handler {
 			return
 		}
 
-		if len(r.URL.Path) > len("/anime/") && hasRecommendationsSuffix(r.URL.Path) {
+		if hasRecommendationsSuffix(r.URL.Path) {
 			handler.GetRecommendationsByAnimeID(w, r)
 			return
 		}
@@ -24,10 +24,25 @@ func NewRouter(handler *Handler) http.Handler {
 		handler.GetAnimeByID(w, r)
 	})
 
-	return mux
+	return withCORS(mux)
 }
 
 func hasRecommendationsSuffix(path string) bool {
 	return len(path) >= len("/recommendations") &&
 		path[len(path)-len("/recommendations"):] == "/recommendations"
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
