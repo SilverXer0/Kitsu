@@ -68,6 +68,100 @@ func (s *AnimeStore) UpsertAnime(ctx context.Context, anime models.Anime) error 
 	return err
 }
 
+func (s *AnimeStore) GetAnimeByID(ctx context.Context, animeID int64) (*models.Anime, error) {
+	const query = `
+		SELECT mal_id, title, title_english, synopsis, score, popularity, episodes, year, image_url
+		FROM anime
+		WHERE mal_id = $1
+	`
+
+	var anime models.Anime
+	err := s.db.QueryRowContext(ctx, query, animeID).Scan(
+		&anime.MALID,
+		&anime.Title,
+		&anime.TitleEnglish,
+		&anime.Synopsis,
+		&anime.Score,
+		&anime.Popularity,
+		&anime.Episodes,
+		&anime.Year,
+		&anime.ImageURL,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &anime, nil
+}
+
+func (s *AnimeStore) GetRecommendationsByAnimeID(ctx context.Context, animeID int64, limit int) ([]models.Recommendation, error) {
+	const query = `
+		SELECT
+			r.source_anime_id,
+			r.recommended_anime_id,
+			r.score,
+			r.rank,
+			r.reason,
+			r.model_version,
+			a.mal_id,
+			a.title,
+			a.title_english,
+			a.synopsis,
+			a.score,
+			a.popularity,
+			a.episodes,
+			a.year,
+			a.image_url
+		FROM recommendations r
+		JOIN anime a ON a.mal_id = r.recommended_anime_id
+		WHERE r.source_anime_id = $1
+		ORDER BY r.rank ASC
+		LIMIT $2
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, animeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	res := make([]models.Recommendation, 0)
+
+	for rows.Next() {
+		var rec models.Recommendation
+		if err := rows.Scan(
+			&rec.SourceAnimeID,
+			&rec.RecommendedAnimeID,
+			&rec.Score,
+			&rec.Rank,
+			&rec.Reason,
+			&rec.ModelVersion,
+			&rec.Anime.MALID,
+			&rec.Anime.Title,
+			&rec.Anime.TitleEnglish,
+			&rec.Anime.Synopsis,
+			&rec.Anime.Score,
+			&rec.Anime.Popularity,
+			&rec.Anime.Episodes,
+			&rec.Anime.Year,
+			&rec.Anime.ImageURL,
+		); err != nil {
+			return nil, err
+		}
+
+		res = append(res, rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (s *AnimeStore) SearchAnimeByTitle(ctx context.Context, q string, limit int) ([]models.Anime, error) {
 	const query = `
 		SELECT mal_id, title, title_english, synopsis, score, popularity, episodes, year, image_url
@@ -84,7 +178,7 @@ func (s *AnimeStore) SearchAnimeByTitle(ctx context.Context, q string, limit int
 	}
 	defer rows.Close()
 
-	result := make([]models.Anime, 0)
+	res := make([]models.Anime, 0)
 	for rows.Next() {
 		var anime models.Anime
 		if err := rows.Scan(
@@ -100,12 +194,12 @@ func (s *AnimeStore) SearchAnimeByTitle(ctx context.Context, q string, limit int
 		); err != nil {
 			return nil, err
 		}
-		result = append(result, anime)
+		res = append(res, anime)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return res, nil
 }
