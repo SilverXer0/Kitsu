@@ -54,7 +54,7 @@ func withRequestLogging(next http.Handler) http.Handler {
 
 		recorder := &statusRecorder{
 			ResponseWriter: w,
-			statusCode:     http.StatusOK,
+			statusCode: http.StatusOK,
 		}
 
 		next.ServeHTTP(recorder, r)
@@ -70,8 +70,17 @@ func withRequestLogging(next http.Handler) http.Handler {
 }
 
 func withCORS(next http.Handler) http.Handler {
+	allowedOrigins := map[string]bool{
+		"http://localhost:3000": true,
+		"http://localhost:5173": true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		origin := r.Header.Get("Origin")
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 

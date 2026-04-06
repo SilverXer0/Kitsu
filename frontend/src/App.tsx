@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import "./index.css";
 
-import { getAnimeById, getRecommendationsByAnimeId, searchAnime } from "./api/anime";
+import {
+  getAnimeById,
+  getRecommendationsByAnimeId,
+  searchAnime,
+} from "./api/anime";
 import AnimeCard from "./components/AnimeCard";
 import AnimeDetail from "./components/AnimeDetail";
 import RecommendationList from "./components/RecommendationList";
@@ -80,19 +84,16 @@ export default function App() {
   }
 
   useEffect(() => {
-    // no-op; placeholder if you want future route/query syncing
+    // placeholder if for future route/query syncing
   }, []);
 
   return (
     <div className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Kitsu</p>
-          <h1>Anime recommendation infrastructure platform</h1>
-          <p className="hero-copy">
-            Search anime, inspect metadata, and explore offline-generated recommendations
-            served by the Go backend.
-          </p>
+          <p className="eyebrow">Anime Recommendation System</p>
+          <h1>Kitsu</h1>
+          <p className="hero-copy">Search Anime and Find Your Next Binge.</p>
         </div>
       </header>
 
@@ -118,7 +119,11 @@ export default function App() {
 
                 <div className="card-grid">
                   {results.map((anime) => (
-                    <AnimeCard key={anime.mal_id} anime={anime} onSelect={handleSelectAnime} />
+                    <AnimeCard
+                      key={anime.mal_id}
+                      anime={anime}
+                      onSelect={handleSelectAnime}
+                    />
                   ))}
                 </div>
 

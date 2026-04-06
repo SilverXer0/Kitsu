@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kitsu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kitsu"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_PORT: 8080
+      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/kitsu?sslmode=disable
+      JIKAN_BASE_URL: https://api.jikan.moe/v4
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      CACHE_TTL_SECONDS: 300
+      INGEST_MODE: refresh
+      INGEST_PAGES: 3
+      INGEST_MAX_PAGES: 100
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
