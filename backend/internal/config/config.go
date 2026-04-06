@@ -13,6 +13,10 @@ type Config struct {
 	PostgresDSN string
 	JikanBaseURL string
 	IngestPages int
+	RedisAddr string
+	RedisPassword string
+	RedisDB int
+	CacheTTLSeconds int
 }
 
 func Load() Config {
@@ -23,6 +27,10 @@ func Load() Config {
 		PostgresDSN: getEnv("POSTGRES_DSN", "postgres://postgres:postgres@localhost:5432/kitsu?sslmode=disable"),
 		JikanBaseURL: getEnv("JIKAN_BASE_URL", "https://api.jikan.moe/v4"),
 		IngestPages: getEnvInt("INGEST_PAGES", 2),
+		RedisAddr: getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+		RedisDB: getEnvInt("REDIS_DB", 0),
+		CacheTTLSeconds: getEnvInt("CACHE_TTL_SECONDS", 300),
 	}
 	if cfg.PostgresDSN == "" {
 		log.Fatal("POSTGRES_DSN is required")

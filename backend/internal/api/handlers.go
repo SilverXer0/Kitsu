@@ -5,16 +5,25 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"errors"
+	"log"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/SilverXer0/Kitsu/backend/internal/cache"
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
 )
 
 type Handler struct {
 	store *storage.AnimeStore
+	cache *cache.RedisCache
+
 }
 
-func NewHandler(store *storage.AnimeStore) *Handler {
-	return &Handler {store: store}
+func NewHandler(store *storage.AnimeStore, cacheClient *cache.RedisCache) *Handler {
+	return &Handler{
+		store: store,
+		cache: cacheClient,
+	}
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +66,23 @@ func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cacheKey := cache.AnimeDetailKey(id)
+
+	cached, err := h.cache.Get(r.Context(), cacheKey)
+	if err == nil {
+		log.Printf("cache hit: anime detail id=%d", id)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+
+	if err != nil && !errors.Is(err, redis.Nil) {
+		log.Printf("cache error: anime detail id=%d err=%v", id, err)
+	} else {
+		log.Printf("cache miss: anime detail id=%d", id)
+	}
+
 	anime, err := h.store.GetAnimeByID(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
@@ -72,6 +98,11 @@ func (h *Handler) GetAnimeByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payload, err := json.Marshal(anime)
+	if err == nil {
+		_ = h.cache.Set(r.Context(), cacheKey, string(payload))
+	}
+
 	writeJSON(w, http.StatusOK, anime)
 }
 
@@ -84,12 +115,34 @@ func (h *Handler) GetRecommendationsByAnimeID(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	cacheKey := cache.AnimeRecommendationsKey(id)
+
+	cached, err := h.cache.Get(r.Context(), cacheKey)
+	if err == nil {
+		log.Printf("cache hit: anime recommendations id=%d", id)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+
+	if err != nil && !errors.Is(err, redis.Nil) {
+		log.Printf("cache error: anime recommendations id=%d err=%v", id, err)
+	} else {
+		log.Printf("cache miss: anime recommendations id=%d", id)
+	}
+
 	recommendations, err := h.store.GetRecommendationsByAnimeID(r.Context(), id, 10)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "failed to fetch recommendations",
 		})
 		return
+	}
+
+	payload, err := json.Marshal(recommendations)
+	if err == nil {
+		_ = h.cache.Set(r.Context(), cacheKey, string(payload))
 	}
 
 	writeJSON(w, http.StatusOK, recommendations)

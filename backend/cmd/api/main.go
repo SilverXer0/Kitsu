@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/SilverXer0/Kitsu/backend/internal/api"
+	"github.com/SilverXer0/Kitsu/backend/internal/cache"
 	"github.com/SilverXer0/Kitsu/backend/internal/config"
 	"github.com/SilverXer0/Kitsu/backend/internal/db"
 	"github.com/SilverXer0/Kitsu/backend/internal/storage"
@@ -21,8 +22,19 @@ func main() {
 	}
 	defer postgresDB.Close()
 
+	cacheClient := cache.NewRedisCache(
+		cfg.RedisAddr,
+		cfg.RedisPassword,
+		cfg.RedisDB,
+		cfg.CacheTTLSeconds,
+	)
+
+	if err := cacheClient.Ping(ctx); err != nil {
+		log.Fatalf("failed to connect to redis: %v", err)
+	}
+
 	store := storage.NewAnimeStore(postgresDB)
-	handler := api.NewHandler(store)
+	handler := api.NewHandler(store, cacheClient)
 	router := api.NewRouter(handler)
 
 	addr := ":" + cfg.AppPort
