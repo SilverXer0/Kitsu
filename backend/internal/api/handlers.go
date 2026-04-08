@@ -52,12 +52,6 @@ func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if q == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": "missing query parameter q",
-		})
-		return
-	}
 
 	page := parsePositiveIntOrDefault(r.URL.Query().Get("page"), 1)
 	limit := parsePositiveIntOrDefault(r.URL.Query().Get("limit"), 12)
@@ -66,7 +60,17 @@ func (h *Handler) SearchAnime(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	items, totalItems, err := h.store.SearchAnimeByTitlePaginated(r.Context(), q, page, limit)
+	opts := storage.SearchOptions{
+		Query:     q,
+		Page:      page,
+		Limit:     limit,
+		Year:      parseOptionalInt(r.URL.Query().Get("year")),
+		MinScore:  parseOptionalFloat(r.URL.Query().Get("min_score")),
+		SortBy:    r.URL.Query().Get("sort_by"),
+		SortOrder: r.URL.Query().Get("sort_order"),
+	}
+
+	items, totalItems, err := h.store.SearchAnimeByTitlePaginated(r.Context(), opts)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "failed to search anime",
@@ -248,6 +252,28 @@ func parsePositiveIntOrDefault(value string, fallback int) int {
 	}
 
 	return parsed
+}
+
+func parseOptionalInt(value string) *int {
+	if value == "" {
+		return nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
+func parseOptionalFloat(value string) *float64 {
+	if value == "" {
+		return nil
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

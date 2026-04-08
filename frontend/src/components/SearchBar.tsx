@@ -11,7 +11,6 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed) return;
     onSearch(trimmed);
   }
 

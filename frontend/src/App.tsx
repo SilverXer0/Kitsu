@@ -30,15 +30,27 @@ export default function App() {
 
   const [gridKey, setGridKey] = useState(0);
 
-  // Controls whether the overlay is visible
   const [showOverlay, setShowOverlay] = useState(false);
+
+  const [filterYear, setFilterYear] = useState<string>("");
+  const [filterMinScore, setFilterMinScore] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"score" | "popularity" | "episodes" | "year" | "">("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   async function runSearch(query: string, page: number) {
     try {
       setError(null);
       setIsSearching(true);
 
-      const response = await searchAnime(query, page, SEARCH_LIMIT);
+      const response = await searchAnime({
+        query,
+        page,
+        limit: SEARCH_LIMIT,
+        year: filterYear,
+        minScore: filterMinScore,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+      });
 
       setResults(response.items);
       setSearchPage(response.page);
@@ -85,16 +97,15 @@ export default function App() {
   }
 
   async function handlePreviousPage() {
-    if (!searchQuery || searchPage <= 1) return;
+    if (searchPage <= 1) return;
     await runSearch(searchQuery, searchPage - 1);
   }
 
   async function handleNextPage() {
-    if (!searchQuery || searchPage >= totalSearchPages) return;
+    if (searchPage >= totalSearchPages) return;
     await runSearch(searchQuery, searchPage + 1);
   }
 
-  // Lock body scroll when overlay is open
   useEffect(() => {
     if (showOverlay) {
       document.body.style.overflow = "hidden";
@@ -105,6 +116,14 @@ export default function App() {
       document.body.style.overflow = "";
     };
   }, [showOverlay]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      runSearch(searchQuery, 1);
+    }, 400);
+
+    return () => clearTimeout(t);
+  }, [filterYear, filterMinScore, sortBy, sortOrder]);
 
   return (
     <div className="app-shell">
@@ -118,13 +137,71 @@ export default function App() {
 
       <SearchBar onSearch={handleSearch} isLoading={isSearching} />
 
+      <div className="controls-bar">
+        <div className="control-group">
+          <label htmlFor="filter-year">Year</label>
+          <input
+            id="filter-year"
+            type="number"
+            placeholder="2023"
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+          />
+        </div>
+
+        <div className="control-group">
+          <label htmlFor="filter-score">Min Score</label>
+          <input
+            id="filter-score"
+            type="number"
+            step="0.1"
+            placeholder="0.0"
+            value={filterMinScore}
+            onChange={(e) => setFilterMinScore(e.target.value)}
+          />
+        </div>
+
+        <div className="control-group">
+          <label htmlFor="sort-by">Sort By</label>
+          <select
+            id="sort-by"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+          >
+            <option value="">None</option>
+            <option value="score">Score</option>
+            <option value="popularity">Popularity</option>
+            <option value="episodes">Episodes</option>
+            <option value="year">Year</option>
+          </select>
+          <button
+            type="button"
+            className="sort-order-btn"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            aria-label={`Sort in ${sortOrder === "asc" ? "descending" : "ascending"} order`}
+            title={`Toggle sort order (currently ${sortOrder})`}
+          >
+            {sortOrder === "asc" ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
       {error && <div className="error-banner">{error}</div>}
 
-      {/* ── Search Results (full-width, single column) ── */}
       <Section title="Search Results">
         {results.length === 0 ? (
           <div className="empty-state">
-            Search for an Anime to Begin Exploring the Catalog.
+            {isSearching ? "Loading top anime..." : "No animes found. Try adjusting your search or filters."}
           </div>
         ) : (
           <>
@@ -167,7 +244,6 @@ export default function App() {
         )}
       </Section>
 
-      {/* ── Detail Overlay ── */}
       {showOverlay && (
         <div className="overlay-backdrop" onClick={handleCloseOverlay}>
           <div className="overlay-panel" onClick={(e) => e.stopPropagation()}>

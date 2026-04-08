@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/SilverXer0/Kitsu/backend/internal/models"
 )
@@ -68,36 +69,72 @@ func (s *AnimeStore) UpsertAnime(ctx context.Context, anime models.Anime) error 
 	return err
 }
 
+type SearchOptions struct {
+	Query     string
+	Page      int
+	Limit     int
+	Year      *int
+	MinScore  *float64
+	SortBy    string
+	SortOrder string
+}
+
 func (s *AnimeStore) SearchAnimeByTitlePaginated(
 	ctx context.Context,
-	q string,
-	page int,
-	limit int,
+	opts SearchOptions,
 ) ([]models.Anime, int, error) {
-	const countQuery = `
-		SELECT COUNT(*)
-		FROM anime
-		WHERE title ILIKE '%' || $1 || '%'
-		   OR COALESCE(title_english, '') ILIKE '%' || $1 || '%'
-	`
+	baseWhere := `WHERE (title ILIKE '%' || $1 || '%' OR COALESCE(title_english, '') ILIKE '%' || $1 || '%')`
+	args := []interface{}{opts.Query}
+	paramIdx := 2
 
+	if opts.Year != nil {
+		baseWhere += fmt.Sprintf(` AND year = $%d`, paramIdx)
+		args = append(args, *opts.Year)
+		paramIdx++
+	}
+
+	if opts.MinScore != nil {
+		baseWhere += fmt.Sprintf(` AND score >= $%d`, paramIdx)
+		args = append(args, *opts.MinScore)
+		paramIdx++
+	}
+
+	countQuery := `SELECT COUNT(*) FROM anime ` + baseWhere
 	var totalItems int
-	if err := s.db.QueryRowContext(ctx, countQuery, q).Scan(&totalItems); err != nil {
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalItems); err != nil {
 		return nil, 0, err
 	}
 
-	offset := (page - 1) * limit
+	orderBy := "popularity ASC NULLS LAST, title ASC" 
+	if opts.SortBy != "" {
+		validColumns := map[string]string{
+			"score":      "score",
+			"popularity": "popularity",
+			"episodes":   "episodes",
+			"year":       "year",
+		}
+		if col, ok := validColumns[opts.SortBy]; ok {
+			dir := "ASC"
+			if opts.SortOrder == "desc" {
+				dir = "DESC"
+			}
+			orderBy = fmt.Sprintf("%s %s NULLS LAST, title ASC", col, dir)
+		}
+	}
 
-	const dataQuery = `
+	offset := (opts.Page - 1) * opts.Limit
+
+	dataQuery := fmt.Sprintf(`
 		SELECT mal_id, title, title_english, synopsis, score, popularity, episodes, year, image_url
 		FROM anime
-		WHERE title ILIKE '%' || $1 || '%'
-		   OR COALESCE(title_english, '') ILIKE '%' || $1 || '%'
-		ORDER BY popularity ASC NULLS LAST, title ASC
-		LIMIT $2 OFFSET $3
-	`
+		%s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, baseWhere, orderBy, paramIdx, paramIdx+1)
 
-	rows, err := s.db.QueryContext(ctx, dataQuery, q, limit, offset)
+	args = append(args, opts.Limit, offset)
+
+	rows, err := s.db.QueryContext(ctx, dataQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}

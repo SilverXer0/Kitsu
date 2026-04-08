@@ -50,7 +50,9 @@
 
 /* ── Reset ─────────────────────────────────── */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -64,7 +66,8 @@ body {
   color: var(--text-primary);
 }
 
-button, input {
+button,
+input {
   font: inherit;
 }
 
@@ -84,6 +87,7 @@ img {
     opacity: 0;
     transform: translateY(18px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -91,8 +95,13 @@ img {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
@@ -100,6 +109,7 @@ img {
     opacity: 0;
     transform: scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -107,13 +117,25 @@ img {
 }
 
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.2); }
-  50%      { box-shadow: 0 0 20px rgba(168, 85, 247, 0.45); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.45);
+  }
 }
 
 /* ── App Shell ─────────────────────────────── */
@@ -311,9 +333,11 @@ img {
 .overlay-scroll::-webkit-scrollbar {
   width: 5px;
 }
+
 .overlay-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .overlay-scroll::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 4px;
@@ -329,7 +353,7 @@ img {
   -webkit-backdrop-filter: none;
 }
 
-.overlay-scroll .section + .section {
+.overlay-scroll .section+.section {
   border-top: 1px solid var(--border-subtle);
   padding-top: 1.25rem;
 }
@@ -392,8 +416,8 @@ img {
   overflow: hidden;
   backdrop-filter: blur(8px);
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 0.25s ease,
-              box-shadow 0.25s ease;
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 
   /* Staggered entry — delay set via inline style */
   animation: fadeSlideUp 0.45s ease-out both;
@@ -454,16 +478,19 @@ img {
   color: var(--score-high);
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
+
 .score-badge.score-mid {
   background: rgba(245, 158, 11, 0.2);
   color: var(--score-mid);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
 .score-badge.score-low {
   background: rgba(239, 68, 68, 0.2);
   color: var(--score-low);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
 .score-badge.score-na {
   background: rgba(107, 122, 149, 0.2);
   color: var(--text-muted);
@@ -575,9 +602,11 @@ img {
 .synopsis::-webkit-scrollbar {
   width: 4px;
 }
+
 .synopsis::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .synopsis::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 4px;
@@ -613,8 +642,8 @@ img {
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 0.25s ease,
-              box-shadow 0.25s ease;
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 
   animation: fadeSlideUp 0.4s ease-out both;
 }
@@ -778,6 +807,99 @@ img {
   border-radius: var(--radius-md);
   backdrop-filter: blur(8px);
   animation: fadeIn 0.3s ease-out;
+}
+
+/* ── Filter & Sort ─────────────────────────── */
+
+.controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  max-width: 680px;
+  margin: -1.5rem auto 2.5rem;
+  justify-content: center;
+  align-items: center;
+  animation: fadeSlideUp 0.6s ease-out 0.2s both;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.8rem;
+  backdrop-filter: blur(12px);
+}
+
+.control-group label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.control-group select,
+.control-group input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+/* Remove spinner buttons from number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#filter-year {
+  width: 40px;
+}
+
+#filter-score {
+  width: 28px;
+}
+
+.control-group select option {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+}
+
+.sort-order-btn {
+  background: rgba(99, 117, 165, 0.1);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.sort-order-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.sort-order-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ── Responsive ────────────────────────────── */
