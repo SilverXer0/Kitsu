@@ -41,3 +41,8 @@ export function getAnimeById(animeId: number): Promise<Anime> {
 export function getRecommendationsByAnimeId(animeId: number): Promise<Recommendation[]> {
   return apiFetch<Recommendation[]>(`/anime/${animeId}/recommendations`);
 }
+
+export function getPersonalizedRecommendations(animeIds: number[]): Promise<Recommendation[]> {
+  const ids = animeIds.join(",");
+  return apiFetch<Recommendation[]>(`/recommendations/personalized?ids=${ids}`);
+}

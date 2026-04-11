@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/SilverXer0/Kitsu/backend/internal/models"
 )
 
@@ -255,6 +256,82 @@ func (s *AnimeStore) GetRecommendationsByAnimeID(
 			return nil, err
 		}
 
+		result = append(result, rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *AnimeStore) GetPersonalizedRecommendations(
+	ctx context.Context,
+	animeIDs []int64,
+	limit int,
+) ([]models.Recommendation, error) {
+	const query = `
+		SELECT
+			r.source_anime_id,
+			r.recommended_anime_id,
+			MAX(r.score) AS score,
+			1 AS rank,
+			(array_agg(r.reason ORDER BY r.score DESC))[1] AS reason,
+			(array_agg(r.model_version ORDER BY r.score DESC))[1] AS model_version,
+			a.mal_id,
+			a.title,
+			a.title_english,
+			a.synopsis,
+			a.score,
+			a.popularity,
+			a.episodes,
+			a.year,
+			a.image_url
+		FROM recommendations r
+		JOIN anime a ON a.mal_id = r.recommended_anime_id
+		WHERE r.source_anime_id = ANY($1)
+		  AND r.recommended_anime_id != ALL($1)
+		GROUP BY r.recommended_anime_id, r.source_anime_id,
+		         a.mal_id, a.title, a.title_english, a.synopsis,
+		         a.score, a.popularity, a.episodes, a.year, a.image_url
+		ORDER BY MAX(r.score) DESC
+		LIMIT $2
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, pq.Array(animeIDs), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Recommendation, 0)
+	rank := 0
+
+	for rows.Next() {
+		rank++
+		var rec models.Recommendation
+		if err := rows.Scan(
+			&rec.SourceAnimeID,
+			&rec.RecommendedAnimeID,
+			&rec.Score,
+			&rec.Rank,
+			&rec.Reason,
+			&rec.ModelVersion,
+			&rec.Anime.MALID,
+			&rec.Anime.Title,
+			&rec.Anime.TitleEnglish,
+			&rec.Anime.Synopsis,
+			&rec.Anime.Score,
+			&rec.Anime.Popularity,
+			&rec.Anime.Episodes,
+			&rec.Anime.Year,
+			&rec.Anime.ImageURL,
+		); err != nil {
+			return nil, err
+		}
+
+		rec.Rank = rank
 		result = append(result, rec)
 	}
 

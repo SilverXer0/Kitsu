@@ -8,6 +8,7 @@ import {
 } from "./api/anime";
 import AnimeCard from "./components/AnimeCard";
 import AnimeDetail from "./components/AnimeDetail";
+import PersonalizeModal from "./components/PersonalizeModal";
 import RecommendationList from "./components/RecommendationList";
 import SearchBar from "./components/SearchBar";
 import Section from "./components/Section";
@@ -31,6 +32,7 @@ export default function App() {
   const [gridKey, setGridKey] = useState(0);
 
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showPersonalizeModal, setShowPersonalizeModal] = useState(false);
 
   const [filterYear, setFilterYear] = useState<string>("");
   const [filterMinScore, setFilterMinScore] = useState<string>("");
@@ -132,6 +134,12 @@ export default function App() {
           <p className="eyebrow">Anime Recommendation Engine</p>
           <h1>Kitsu</h1>
           <p className="hero-copy">Search Anime and Discover Your Next Binge.</p>
+          <button className="for-you-btn" onClick={() => setShowPersonalizeModal(true)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            For You
+          </button>
         </div>
       </header>
 
@@ -277,6 +285,15 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+      {showPersonalizeModal && (
+        <PersonalizeModal
+          onClose={() => setShowPersonalizeModal(false)}
+          onSelectAnime={(anime) => {
+            setShowPersonalizeModal(false);
+            handleSelectAnime(anime);
+          }}
+        />
       )}
     </div>
   );

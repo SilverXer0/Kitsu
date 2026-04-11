@@ -13,6 +13,7 @@ func NewRouter(handler *Handler) http.Handler {
 	mux.HandleFunc("/ready", handler.Ready)
 	mux.HandleFunc("/metrics", handler.GetMetrics)
 	mux.HandleFunc("/anime/search", handler.SearchAnime)
+	mux.HandleFunc("/recommendations/personalized", handler.GetPersonalizedRecommendations)
 
 	mux.HandleFunc("/anime/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/anime/" {

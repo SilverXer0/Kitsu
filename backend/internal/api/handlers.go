@@ -276,6 +276,47 @@ func parseOptionalFloat(value string) *float64 {
 	return &parsed
 }
 
+func (h *Handler) GetPersonalizedRecommendations(w http.ResponseWriter, r *http.Request) {
+	idsParam := strings.TrimSpace(r.URL.Query().Get("ids"))
+	if idsParam == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "ids parameter is required",
+		})
+		return
+	}
+
+	parts := strings.Split(idsParam, ",")
+	if len(parts) < 3 || len(parts) > 5 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "provide between 3 and 5 anime IDs",
+		})
+		return
+	}
+
+	animeIDs := make([]int64, 0, len(parts))
+	for _, part := range parts {
+		id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "invalid anime id: " + strings.TrimSpace(part),
+			})
+			return
+		}
+		animeIDs = append(animeIDs, id)
+	}
+
+	recommendations, err := h.store.GetPersonalizedRecommendations(r.Context(), animeIDs, 20)
+	if err != nil {
+		log.Printf("personalized recommendations error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "failed to fetch personalized recommendations",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, recommendations)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

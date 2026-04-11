@@ -31,12 +31,13 @@ class AnimeFeatures(BaseModel):
     mal_id: int
     title: str
     normalized_title: str
+    franchise_key: str = ""
     score: Optional[float] = None
     popularity: Optional[int] = None
     year: Optional[int] = None
     genres: set[str] = Field(default_factory=set)
     studios: set[str] = Field(default_factory=set)
-    synopsis_tokens: set[str] = Field(default_factory=set)
+    synopsis_tfidf: dict[str, float] = Field(default_factory=dict)
 
 
 class RecommendationRecord(BaseModel):
