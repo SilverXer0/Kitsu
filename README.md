@@ -32,14 +32,18 @@ The system is divided into four main components:
 - Redis is used as a cache layer for frequently accessed queries
 
 ### 3. Recommendation Pipeline (Offline)
-- Processes stored anime data
-- Computes similarity-based recommendations
+- Processes stored anime data into feature vectors
+- Computes TF-IDF synopsis similarity and weighted genre matching
+- Applies MMR (Maximal Marginal Relevance) diversity reranking to avoid homogeneous results
+- Enforces franchise capping so sequels and spin-offs don't flood the top results
+- Surfaces hidden gems via a quality-aware popularity bonus
 - Writes ranked results back into PostgreSQL
 
 ### 4. API + Frontend
-- Go backend serves REST endpoints for search and recommendations
+- Go backend serves REST endpoints for search, per-anime recommendations, and personalized recommendations
 - Redis caching reduces latency and database load
 - React + TypeScript frontend provides a user interface for search and discovery
+- "For You" flow lets users pick 3–5 favorite anime and get a merged, personalized recommendation list
 
 ---
 
@@ -195,11 +199,11 @@ make redisshell
 
 ## Future Improvements
 
-- Improved recommendation models
-- Better ranking and personalization
 - Scheduled ingestion and data freshness
 - Observability (metrics, tracing)
 - Deployment to cloud infrastructure
+- User accounts and persistent watch history
+- Collaborative filtering from user interactions
 
 ---
 
