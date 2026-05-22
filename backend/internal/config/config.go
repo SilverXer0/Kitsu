@@ -25,7 +25,7 @@ func Load() Config {
 	_ = godotenv.Load()
 
 	cfg := Config{
-		AppPort: getEnv("APP_PORT", "8080"),
+		AppPort: getEnv("PORT", getEnv("APP_PORT", "8080")),
 		PostgresDSN: getEnv("POSTGRES_DSN", "postgres://postgres:postgres@localhost:5432/kitsu?sslmode=disable"),
 		JikanBaseURL: getEnv("JIKAN_BASE_URL", "https://api.jikan.moe/v4"),
 		IngestMode: getEnv("INGEST_MODE", "top"),
